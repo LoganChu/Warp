@@ -1,0 +1,4 @@
+.venv/
+.generated/
+results/
+__pycache__/

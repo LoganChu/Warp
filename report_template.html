@@ -1,0 +1,430 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>MJWarp walkthrough results</title>
+<style>
+  :root {
+    color-scheme: light;
+    --page: #f9f9f7; --surface: #fcfcfb; --ink: #0b0b0b; --ink2: #52514e; --muted: #898781;
+    --grid: #e1e0d9; --axis: #c3c2b7; --border: rgba(11, 11, 11, 0.10);
+    --s1: #2a78d6; --s2: #eb6834; --s3: #1baf7a; --s4: #eda100;
+    --good: #0ca30c; --warning: #fab219; --critical: #d03b3b;
+    --track: #cde2fb; --region: rgba(12, 163, 12, 0.09);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      color-scheme: dark;
+      --page: #0d0d0d; --surface: #1a1a19; --ink: #ffffff; --ink2: #c3c2b7; --muted: #898781;
+      --grid: #2c2c2a; --axis: #383835; --border: rgba(255, 255, 255, 0.10);
+      --s1: #3987e5; --s2: #d95926; --s3: #199e70; --s4: #c98500;
+      --track: #0d366b; --region: rgba(12, 163, 12, 0.14);
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--page); color: var(--ink);
+    font: 15px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif;
+  }
+  main { max-width: 1120px; margin: 0 auto; padding: 32px 16px 64px; }
+  h1 { font-size: 26px; margin: 0 0 4px; letter-spacing: -0.01em; }
+  h2 { font-size: 19px; margin: 44px 0 4px; }
+  h3 { font-size: 15px; margin: 0; font-weight: 600; }
+  p { margin: 0; }
+  .lede, .intro { color: var(--ink2); max-width: 72ch; }
+  .intro { margin-bottom: 14px; }
+  code { font: 13px ui-monospace, SFMono-Regular, Menlo, monospace; background: var(--border); padding: 1px 5px; border-radius: 4px; }
+  .grid { display: grid; gap: 14px; grid-template-columns: repeat(auto-fit, minmax(min(100%, 440px), 1fr)); }
+  .tiles { display: grid; gap: 14px; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); margin-top: 22px; }
+  .wide { grid-column: 1 / -1; }
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 16px; min-width: 0; }
+  .tile .label { color: var(--ink2); font-size: 13px; }
+  .tile .value { font-size: 28px; font-weight: 600; line-height: 1.25; margin-top: 2px; }
+  .tile .note, .sub, .foot { color: var(--muted); font-size: 12.5px; }
+  .sub { margin: 2px 0 10px; color: var(--ink2); font-size: 13px; }
+  .foot { margin-top: 10px; color: var(--ink2); }
+  .status { display: inline-flex; align-items: center; gap: 5px; }
+  .legend { display: flex; flex-wrap: wrap; gap: 4px 16px; margin: 0 0 6px; padding: 0; list-style: none; font-size: 12.5px; color: var(--ink2); }
+  .legend li { display: inline-flex; align-items: center; gap: 6px; }
+  .key { display: inline-block; width: 16px; height: 0; border-top: 2px solid; border-radius: 2px; }
+  .plot { position: relative; }
+  .plot svg { display: block; width: 100%; outline: none; }
+  .plot svg:focus-visible { outline: 2px solid var(--s1); outline-offset: 2px; border-radius: 4px; }
+  .tick { fill: var(--muted); font-size: 11px; font-variant-numeric: tabular-nums; }
+  .axis-label { fill: var(--ink2); font-size: 12px; }
+  .mark-label { fill: var(--muted); font-size: 10.5px; }
+  .note-label { fill: var(--ink2); font-size: 11.5px; }
+  .tip {
+    position: absolute; pointer-events: none; z-index: 2; min-width: 120px; max-width: 280px;
+    background: var(--surface); border: 1px solid var(--border); border-radius: 8px;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.14); padding: 8px 10px; font-size: 12.5px; display: none;
+  }
+  .tip .head { color: var(--ink2); margin-bottom: 4px; }
+  .tip .row { display: flex; align-items: center; gap: 6px; white-space: nowrap; }
+  .tip .row b { font-variant-numeric: tabular-nums; }
+  .tip .row span.name { color: var(--ink2); }
+  .meter { margin-top: 12px; }
+  .meter:first-of-type { margin-top: 4px; }
+  .meter .top { display: flex; justify-content: space-between; gap: 12px; font-size: 13px; color: var(--ink2); }
+  .meter .top b { color: var(--ink); font-weight: 600; }
+  .meter .track { height: 8px; border-radius: 4px; background: var(--track); margin-top: 6px; overflow: hidden; }
+  .meter .fill { height: 100%; border-radius: 4px; background: var(--s1); min-width: 4px; }
+  details { margin-top: 10px; font-size: 12.5px; }
+  summary { cursor: pointer; color: var(--ink2); width: fit-content; }
+  .table-wrap { max-height: 260px; overflow: auto; margin-top: 8px; border: 1px solid var(--border); border-radius: 6px; }
+  table { border-collapse: collapse; width: 100%; font-variant-numeric: tabular-nums; }
+  th, td { text-align: right; padding: 4px 10px; border-bottom: 1px solid var(--grid); white-space: nowrap; }
+  th { position: sticky; top: 0; background: var(--surface); color: var(--ink2); font-weight: 600; }
+  th:first-child, td:first-child { text-align: left; }
+  .missing { color: var(--ink2); }
+</style>
+</head>
+<body>
+<main id="app"></main>
+<script>
+const REPORT = /*DATA*/null;
+
+const NS = "http://www.w3.org/2000/svg";
+const SLOT = ["var(--s1)", "var(--s2)", "var(--s3)", "var(--s4)"];
+
+function h(tag, attrs, parent, text) {
+  const node = document.createElement(tag);
+  for (const k in attrs || {}) node.setAttribute(k, attrs[k]);
+  if (text != null) node.textContent = text;
+  if (parent) parent.appendChild(node);
+  return node;
+}
+function s(tag, attrs, parent, text) {
+  const node = document.createElementNS(NS, tag);
+  for (const k in attrs || {}) node.setAttribute(k, attrs[k]);
+  if (text != null) node.textContent = text;
+  if (parent) parent.appendChild(node);
+  return node;
+}
+
+function fmt(v, kind) {
+  if (v == null || Number.isNaN(v)) return "-";
+  const a = Math.abs(v);
+  if (kind === "si") {
+    if (a >= 1e6) return (v / 1e6).toFixed(a >= 1e7 ? 0 : 1).replace(/\.0$/, "") + "M";
+    if (a >= 1e3) return (v / 1e3).toFixed(a >= 1e4 ? 0 : 1).replace(/\.0$/, "") + "K";
+    return String(Math.round(v * 10) / 10);
+  }
+  if (kind === "int") return Math.round(v).toLocaleString("en-US");
+  if (kind === "g") return String(parseFloat(v.toPrecision(3)));
+  if (kind === "f2") return v.toFixed(2);
+  if (kind === "f3") return v.toFixed(3);
+  return v.toFixed(1);
+}
+
+function niceTicks(lo, hi, n) {
+  const span = hi - lo || 1, raw = span / n, mag = Math.pow(10, Math.floor(Math.log10(raw))), norm = raw / mag;
+  const step = (norm < 1.5 ? 1 : norm < 3 ? 2 : norm < 7 ? 5 : 10) * mag;
+  const ticks = [];
+  for (let v = Math.ceil(lo / step - 1e-9) * step; v <= hi + step * 1e-6; v += step) ticks.push(+v.toFixed(10));
+  return ticks;
+}
+function axis(values, log, zero) {
+  let lo = Math.min(...values), hi = Math.max(...values);
+  if (log) {
+    const e0 = Math.floor(Math.log10(lo) + 1e-9), e1 = Math.ceil(Math.log10(hi) - 1e-9);
+    const ticks = [];
+    for (let e = e0; e <= Math.max(e1, e0 + 1); e++) ticks.push(Math.pow(10, e));
+    return { lo: ticks[0], hi: ticks[ticks.length - 1], ticks, log };
+  }
+  if (zero) lo = Math.min(0, lo);
+  if (hi === lo) hi = lo + 1;
+  const ticks = niceTicks(lo, hi, 5), step = ticks[1] - ticks[0];
+  if (ticks[ticks.length - 1] < hi - 1e-9) ticks.push(+(ticks[ticks.length - 1] + step).toFixed(10));
+  if (ticks[0] > lo + 1e-9) ticks.unshift(+(ticks[0] - step).toFixed(10));
+  return { lo: ticks[0], hi: ticks[ticks.length - 1], ticks, log };
+}
+function scaler(ax, r0, r1) {
+  const f = ax.log ? Math.log10 : (v) => v, a = f(ax.lo), b = f(ax.hi);
+  return (v) => r0 + ((f(v) - a) / (b - a || 1)) * (r1 - r0);
+}
+
+function legend(parent, items) {
+  const list = h("ul", { class: "legend" }, parent);
+  for (const item of items) {
+    const li = h("li", null, list);
+    if (item.shape) h("span", { style: `color:${item.color};font-weight:700` }, li, item.shape);
+    else h("span", { class: "key", style: `border-color:${item.color}` }, li);
+    h("span", null, li, item.name);
+  }
+}
+
+function tableView(parent, columns, rows) {
+  const details = h("details", null, parent);
+  h("summary", null, details, "Data table");
+  const table = h("table", null, h("div", { class: "table-wrap" }, details));
+  const head = h("tr", null, h("thead", null, table));
+  for (const c of columns) h("th", null, head, c);
+  const body = h("tbody", null, table);
+  for (const row of rows) {
+    const tr = h("tr", null, body);
+    for (const cell of row) h("td", null, tr, cell);
+  }
+}
+
+function tooltip(plot) {
+  const tip = h("div", { class: "tip" }, plot);
+  return {
+    show(head, rows, px, py) {
+      tip.replaceChildren();
+      h("div", { class: "head" }, tip, head);
+      for (const r of rows) {
+        const row = h("div", { class: "row" }, tip);
+        if (r.color) h("span", { class: "key", style: `border-color:${r.color}` }, row);
+        h("b", null, row, r.value);
+        h("span", { class: "name" }, row, r.name);
+      }
+      tip.style.display = "block";
+      const w = tip.offsetWidth, W = plot.clientWidth;
+      tip.style.left = Math.max(0, Math.min(W - w, px + 14 + w > W ? px - w - 14 : px + 14)) + "px";
+      tip.style.top = Math.max(0, py - tip.offsetHeight - 10) + "px";
+    },
+    hide() { tip.style.display = "none"; },
+  };
+}
+
+function chartCard(parent, block) {
+  const card = h("div", { class: block.wide ? "card wide" : "card" }, parent);
+  h("h3", null, card, block.title);
+  if (block.subtitle) h("p", { class: "sub" }, card, block.subtitle);
+  return card;
+}
+
+// ---- line chart: crosshair + one tooltip listing every series -------------
+function lineChart(parent, block) {
+  const card = chartCard(parent, block);
+  const series = block.series.map((sr, i) => ({ ...sr, color: SLOT[sr.slot ?? i] }));
+  if (series.length > 1) legend(card, series);
+  const plot = h("div", { class: "plot" }, card);
+  const tip = tooltip(plot);
+  const xs = [...new Set(series.flatMap((sr) => sr.pts.map((p) => p[0])))].sort((a, b) => a - b);
+  const ys = series.flatMap((sr) => sr.pts.map((p) => p[1])).concat((block.hlines || []).map((l) => l.y));
+  const ax = axis(xs, block.xLog, false), ay = axis(ys, block.yLog, true);
+  const H = 270, M = { l: 54, r: 18, t: block.marks ? 22 : 12, b: 40 };
+  let cursor = null, geometry = null;
+
+  function render() {
+    const W = Math.max(280, plot.clientWidth);
+    const svg = s("svg", { viewBox: `0 0 ${W} ${H}`, height: H, tabindex: 0, role: "img", "aria-label": block.title });
+    const X = scaler(ax, M.l, W - M.r), Y = scaler(ay, H - M.b, M.t);
+    geometry = { W, X, Y };
+
+    for (const t of ay.ticks) {
+      s("line", { x1: M.l, x2: W - M.r, y1: Y(t), y2: Y(t), stroke: "var(--grid)", "stroke-width": 1 }, svg);
+      s("text", { x: M.l - 8, y: Y(t) + 4, "text-anchor": "end", class: "tick" }, svg, fmt(t, block.yFmt));
+    }
+    s("line", { x1: M.l, x2: W - M.r, y1: H - M.b, y2: H - M.b, stroke: "var(--axis)", "stroke-width": 1 }, svg);
+    const xticks = block.xLog ? ax.ticks : niceTicks(ax.lo, ax.hi, Math.max(3, Math.floor(W / 110)));
+    for (const t of xticks) s("text", { x: X(t), y: H - M.b + 16, "text-anchor": "middle", class: "tick" }, svg, fmt(t, block.xFmt));
+    s("text", { x: (M.l + W - M.r) / 2, y: H - 4, "text-anchor": "middle", class: "axis-label" }, svg, block.xLabel);
+    s("text", { x: 12, y: (M.t + H - M.b) / 2, "text-anchor": "middle", class: "axis-label", transform: `rotate(-90 12 ${(M.t + H - M.b) / 2})` }, svg, block.yLabel);
+
+    let labelEnd = -1e9;
+    for (const mark of block.marks || []) {
+      const x = X(mark.x);
+      s("line", { x1: x, x2: x, y1: M.t, y2: H - M.b, stroke: "var(--grid)", "stroke-width": 1 }, svg);
+      if (x + 3 > labelEnd) {
+        s("text", { x: x + 3, y: M.t - 8, class: "mark-label" }, svg, mark.label);
+        labelEnd = x + 3 + mark.label.length * 6 + 6;
+      }
+    }
+    // Reference lines, highest first: the top label sits above its line, the next below,
+    // so two lines that are close together keep their labels apart.
+    [...(block.hlines || [])].sort((a, b) => b.y - a.y).forEach((line, i) => {
+      s("line", { x1: M.l, x2: W - M.r, y1: Y(line.y), y2: Y(line.y), stroke: "var(--axis)", "stroke-width": 1 }, svg);
+      s("text", { x: W - M.r, y: Y(line.y) + (i % 2 ? 14 : -5), "text-anchor": "end", class: "note-label" }, svg, line.label);
+    });
+
+    for (const sr of series) {
+      const d = sr.pts.map((p, i) => `${i ? "L" : "M"}${X(p[0]).toFixed(1)},${Y(p[1]).toFixed(1)}`).join("");
+      s("path", { d, fill: "none", stroke: sr.color, "stroke-width": 2, "stroke-linejoin": "round", "stroke-linecap": "round" }, svg);
+      if (block.points) for (const p of sr.pts)
+        s("circle", { cx: X(p[0]), cy: Y(p[1]), r: 4, fill: sr.color, stroke: "var(--surface)", "stroke-width": 2 }, svg);
+      if (sr.annotateMax) {
+        const top = sr.pts.reduce((a, b) => (b[1] > a[1] ? b : a));
+        s("circle", { cx: X(top[0]), cy: Y(top[1]), r: 4, fill: sr.color, stroke: "var(--surface)", "stroke-width": 2 }, svg);
+        const right = X(top[0]) < W - 130;
+        s("text", { x: X(top[0]) + (right ? 9 : -9), y: Y(top[1]) + 4, "text-anchor": right ? "start" : "end", class: "note-label" },
+          svg, `${sr.annotateMax} ${fmt(top[1], block.tipFmt || block.yFmt)}`);
+      }
+    }
+
+    const hair = s("line", { y1: M.t, y2: H - M.b, stroke: "var(--muted)", "stroke-width": 1, visibility: "hidden" }, svg);
+    const dots = series.map((sr) => s("circle", { r: 4, fill: sr.color, stroke: "var(--surface)", "stroke-width": 2, visibility: "hidden" }, svg));
+
+    function showAt(index) {
+      cursor = Math.max(0, Math.min(xs.length - 1, index));
+      const x = xs[cursor], px = X(x), rows = [];
+      let top = H;
+      series.forEach((sr, i) => {
+        const p = sr.pts.find((q) => q[0] === x);
+        dots[i].setAttribute("visibility", p ? "visible" : "hidden");
+        if (!p) return;
+        dots[i].setAttribute("cx", px); dots[i].setAttribute("cy", Y(p[1]));
+        top = Math.min(top, Y(p[1]));
+        rows.push({ color: sr.color, value: fmt(p[1], block.tipFmt || block.yFmt) + (block.unit ? " " + block.unit : ""), name: sr.name + (p[2] ? " · " + p[2] : "") });
+      });
+      hair.setAttribute("x1", px); hair.setAttribute("x2", px); hair.setAttribute("visibility", "visible");
+      tip.show(`${block.xLabel}: ${fmt(x, block.xTipFmt || block.xFmt)}`, rows, px, top);
+    }
+    function hide() {
+      hair.setAttribute("visibility", "hidden");
+      dots.forEach((dot) => dot.setAttribute("visibility", "hidden"));
+      tip.hide();
+    }
+    svg.addEventListener("pointermove", (e) => {
+      const px = e.clientX - svg.getBoundingClientRect().left;
+      let best = 0, dist = Infinity;
+      xs.forEach((x, i) => { const dd = Math.abs(X(x) - px); if (dd < dist) { dist = dd; best = i; } });
+      showAt(best);
+    });
+    svg.addEventListener("pointerleave", hide);
+    svg.addEventListener("focus", () => showAt(cursor ?? xs.length - 1));
+    svg.addEventListener("blur", hide);
+    svg.addEventListener("keydown", (e) => {
+      if (e.key !== "ArrowLeft" && e.key !== "ArrowRight") return;
+      e.preventDefault();
+      showAt((cursor ?? 0) + (e.key === "ArrowRight" ? 1 : -1) * (e.shiftKey ? 10 : 1));
+    });
+    plot.querySelector("svg")?.remove();
+    plot.prepend(svg);
+  }
+  render();
+  new ResizeObserver(() => { if (geometry && Math.abs(geometry.W - plot.clientWidth) > 2) render(); }).observe(plot);
+
+  if (block.foot) h("p", { class: "foot" }, card, block.foot);
+  const columns = [block.xLabel].concat(series.map((sr) => sr.name + (block.unit ? ` [${block.unit}]` : "")));
+  tableView(card, columns, xs.map((x) => [fmt(x, block.xTipFmt || block.xFmt)].concat(
+    series.map((sr) => { const p = sr.pts.find((q) => q[0] === x); return p ? fmt(p[1], block.tipFmt || block.yFmt) : ""; }))));
+}
+
+// ---- scatter: nearest-point hover, status shown by shape and label --------
+function scatterChart(parent, block) {
+  const card = chartCard(parent, block);
+  const kinds = [
+    { ok: true, name: "stacked", color: "var(--good)", shape: "●" },
+    { ok: false, name: "failed", color: "var(--critical)", shape: "✕" },
+  ].filter((k) => block.points.some((p) => p.ok === k.ok));
+  legend(card, kinds);
+  const plot = h("div", { class: "plot" }, card);
+  const tip = tooltip(plot);
+  const region = block.region;
+  const ax = axis(block.points.map((p) => p.x).concat([0, region.x1 * 1.3]), false, true);
+  const ay = axis(block.points.map((p) => p.y).concat([region.y0 - 5, region.y1 + 5]), false, false);
+  const H = 300, M = { l: 54, r: 18, t: 12, b: 40 };
+  let geometry = null, cursor = null;
+
+  function render() {
+    const W = Math.max(280, plot.clientWidth);
+    const svg = s("svg", { viewBox: `0 0 ${W} ${H}`, height: H, tabindex: 0, role: "img", "aria-label": block.title });
+    const X = scaler(ax, M.l, W - M.r), Y = scaler(ay, H - M.b, M.t);
+    geometry = { W };
+    s("rect", { x: X(region.x0), y: Y(region.y1), width: X(region.x1) - X(region.x0), height: Y(region.y0) - Y(region.y1), fill: "var(--region)" }, svg);
+    s("text", { x: X(region.x1) - 6, y: Y(region.y1) + 15, "text-anchor": "end", class: "note-label" }, svg, "success region");
+    for (const t of ay.ticks) {
+      s("line", { x1: M.l, x2: W - M.r, y1: Y(t), y2: Y(t), stroke: "var(--grid)", "stroke-width": 1 }, svg);
+      s("text", { x: M.l - 8, y: Y(t) + 4, "text-anchor": "end", class: "tick" }, svg, fmt(t, "int"));
+    }
+    s("line", { x1: M.l, x2: W - M.r, y1: H - M.b, y2: H - M.b, stroke: "var(--axis)", "stroke-width": 1 }, svg);
+    for (const t of ax.ticks) s("text", { x: X(t), y: H - M.b + 16, "text-anchor": "middle", class: "tick" }, svg, fmt(t, "int"));
+    s("text", { x: (M.l + W - M.r) / 2, y: H - 4, "text-anchor": "middle", class: "axis-label" }, svg, block.xLabel);
+    s("text", { x: 12, y: (M.t + H - M.b) / 2, "text-anchor": "middle", class: "axis-label", transform: `rotate(-90 12 ${(M.t + H - M.b) / 2})` }, svg, block.yLabel);
+
+    const ring = s("circle", { r: 9, fill: "none", stroke: "var(--ink)", "stroke-width": 1.5, visibility: "hidden" }, svg);
+    for (const p of block.points) {
+      const cx = X(p.x), cy = Y(p.y);
+      if (p.ok) s("circle", { cx, cy, r: 5, fill: "var(--good)", stroke: "var(--surface)", "stroke-width": 2 }, svg);
+      else s("path", { d: `M${cx - 5},${cy - 5}L${cx + 5},${cy + 5}M${cx - 5},${cy + 5}L${cx + 5},${cy - 5}`, stroke: "var(--critical)", "stroke-width": 2.5, "stroke-linecap": "round" }, svg);
+    }
+    function showAt(index) {
+      cursor = Math.max(0, Math.min(block.points.length - 1, index));
+      const p = block.points[cursor];
+      ring.setAttribute("cx", X(p.x)); ring.setAttribute("cy", Y(p.y)); ring.setAttribute("visibility", "visible");
+      tip.show(`${p.label} · ${p.ok ? "stacked" : "failed"}`, [
+        { value: fmt(p.x, "f1") + " mm", name: "horizontal offset" },
+        { value: fmt(p.y, "f1") + " mm", name: "vertical separation" },
+        { value: p.start, name: "red cube start offset" },
+      ], X(p.x), Y(p.y));
+    }
+    function hide() { ring.setAttribute("visibility", "hidden"); tip.hide(); }
+    svg.addEventListener("pointermove", (e) => {
+      const box = svg.getBoundingClientRect(), px = e.clientX - box.left, py = e.clientY - box.top;
+      let best = 0, dist = Infinity;
+      block.points.forEach((p, i) => { const dd = Math.hypot(X(p.x) - px, Y(p.y) - py); if (dd < dist) { dist = dd; best = i; } });
+      showAt(best);
+    });
+    svg.addEventListener("pointerleave", hide);
+    svg.addEventListener("focus", () => showAt(cursor ?? 0));
+    svg.addEventListener("blur", hide);
+    svg.addEventListener("keydown", (e) => {
+      if (e.key !== "ArrowLeft" && e.key !== "ArrowRight") return;
+      e.preventDefault();
+      showAt((cursor ?? 0) + (e.key === "ArrowRight" ? 1 : -1));
+    });
+    plot.querySelector("svg")?.remove();
+    plot.prepend(svg);
+  }
+  render();
+  new ResizeObserver(() => { if (geometry && Math.abs(geometry.W - plot.clientWidth) > 2) render(); }).observe(plot);
+
+  if (block.foot) h("p", { class: "foot" }, card, block.foot);
+  tableView(card, ["World", "Result", "Horizontal offset [mm]", "Vertical separation [mm]", "Red cube start offset [mm]"],
+    block.points.map((p) => [p.label, p.ok ? "stacked" : "failed", fmt(p.x, "f1"), fmt(p.y, "f1"), p.start]));
+}
+
+function meters(parent, block) {
+  const card = chartCard(parent, block);
+  for (const m of block.meters) {
+    const box = h("div", { class: "meter" }, card);
+    const top = h("div", { class: "top" }, box);
+    h("span", null, top, m.label);
+    const value = h("span", null, top);
+    h("b", null, value, fmt(m.value, "int"));
+    value.append(` of ${fmt(m.max, "int")} (${Math.round((100 * m.value) / m.max)}%)`);
+    const ratio = m.value / m.max;
+    const fill = h("div", { class: "fill" }, h("div", { class: "track", role: "meter", "aria-valuenow": m.value, "aria-valuemin": 0, "aria-valuemax": m.max, "aria-label": m.label }, box));
+    fill.style.width = Math.min(100, 100 * ratio) + "%";
+    if (ratio >= 0.9) fill.style.background = "var(--critical)";
+    else if (ratio >= 0.7) fill.style.background = "var(--warning)";
+  }
+  if (block.foot) h("p", { class: "foot" }, card, block.foot);
+}
+
+function tableCard(parent, block) {
+  const card = chartCard(parent, block);
+  const table = h("table", null, h("div", { class: "table-wrap", style: "max-height:none" }, card));
+  const head = h("tr", null, h("thead", null, table));
+  for (const c of block.columns) h("th", null, head, c);
+  const body = h("tbody", null, table);
+  for (const row of block.rows) { const tr = h("tr", null, body); for (const cell of row) h("td", null, tr, cell); }
+  if (block.foot) h("p", { class: "foot" }, card, block.foot);
+}
+
+const app = document.getElementById("app");
+h("h1", null, app, REPORT.title);
+h("p", { class: "lede" }, app, REPORT.lede);
+const tiles = h("div", { class: "tiles" }, app);
+for (const t of REPORT.tiles) {
+  const tile = h("div", { class: "card tile" }, tiles);
+  h("div", { class: "label" }, tile, t.label);
+  h("div", { class: "value" }, tile, t.value);
+  h("div", { class: "note" }, tile, t.note);
+}
+for (const section of REPORT.sections) {
+  h("h2", null, app, section.title);
+  h("p", { class: "intro" }, app, section.intro);
+  if (section.missing) { h("p", { class: "card missing" }, app, section.missing); continue; }
+  const grid = h("div", { class: "grid" }, app);
+  for (const block of section.blocks) {
+    ({ line: lineChart, scatter: scatterChart, meters, table: tableCard })[block.type](grid, block);
+  }
+}
+</script>
+</body>
+</html>

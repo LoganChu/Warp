@@ -1,0 +1,11 @@
+[project]
+name = "warp-mjwarp-tutorial"
+version = "0.1.0"
+description = "Stage-by-stage walkthrough of NVIDIA Warp and MuJoCo Warp with an SO-101 pick-and-place task"
+requires-python = ">=3.12"
+dependencies = [
+    "mujoco>=3.14.0",
+    "mujoco-warp>=3.14.0",
+    "numpy>=2.5.3",
+    "warp-lang>=1.17.0",
+]
